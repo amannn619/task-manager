@@ -1,5 +1,5 @@
 Flask
 Flask_Cors
-mysql_connector_python
+mysql-connector-python
 PyJWT
 PyJWT
