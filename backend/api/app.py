@@ -1,7 +1,8 @@
 from datetime import datetime
 from flask import Flask, jsonify, request, render_template, redirect, session, url_for
 from flask_cors import CORS
-from Model.user import User
+from user import User
+# from Model.user import User
 # from Utils.utils import Utils
 # from Database.database import Database
 import jwt
