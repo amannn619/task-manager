@@ -25,7 +25,7 @@ class Database:
                 user=self.user,
                 password=self.password,
                 host=self.host,
-                port=self.port,
+                port=self.port
             )
         except Exception as e:
             print("Error connecting to database: " + str(e))
