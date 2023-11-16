@@ -68,7 +68,7 @@ def signup():
     name = data.get('name')
     username = data.get('username')
     password = data.get('password')
-    if not (name or username or password):
+    if not (name and username and password):
         return jsonify("insufficient data"), 406
 
     user = User.create_user(name, username, password)
