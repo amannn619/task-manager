@@ -1,0 +1,33 @@
+<div class="centered-content">
+  <div class="login-box">
+    <h1 class="title has-text-primary">Login</h1>
+    <div class="field">
+      <input
+        #username
+        class="input has-background-light"
+        type="text"
+        placeholder="Username"
+      />
+    </div>
+    <div class="field">
+      <input
+        #password
+        class="input has-background-light"
+        type="password"
+        placeholder="Password"
+      />
+    </div>
+    <div class="field" style="display: flex; justify-content: flex-end">
+      <button
+        class="button is-success has has-text-white"
+        (click)="onLoginButtonClicked(username.value, password.value)"
+      >
+        Login
+      </button>
+    </div>
+    <br />
+    <p class="has-text-grey">
+      Not got an account? <a href="/signup">Sign up</a> now
+    </p>
+  </div>
+</div>
