@@ -7,7 +7,7 @@ class Database:
     database = "taskmanager"
     user = "aman"
     password = "aman"
-    host = ""
+    host = "192.168.0.112"
     port = 3306
 
     def __init__(self):
