@@ -5,9 +5,9 @@ import json
 
 class Database:
     database = "taskmanager"
-    user = "root"
-    password = "root"
-    host = "127.0.0.1"
+    user = "aman"
+    password = "aman"
+    host = "192.168.0.112"
     port = 3306
 
     def __init__(self):
