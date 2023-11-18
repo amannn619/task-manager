@@ -256,8 +256,8 @@ class Database:
             return {"message": f"{e}"}
 
     def get_user_from_credentials(self, username, password):
-        # if self.connection is None:
-        self.connect()
+        if self.connection is None:
+            self.connect()
         cur = self.connection.cursor()
         try:
             query = "SELECT * FROM user WHERE username = %s and password = %s;"
