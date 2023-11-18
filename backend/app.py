@@ -8,7 +8,8 @@ import jwt
 from functools import wraps
 
 app = Flask(__name__)
-CORS(app, expose_headers=["x-access-token", "x-refresh-token"])
+CORS(app, origins="http://localhost:4200",
+     expose_headers=["x-access-token", "x-refresh-token"])
 secret_key = "asdf"
 
 # middleware
