@@ -269,7 +269,7 @@ class Database:
                 return dict(zip(column_names, res))
             return False
         except Exception as e:
-            return {"message": f"{e}"}
+            return {"message": f"from Database.py {e}"}
 
     def get_session_by_token(self, token):
         if self.connection is None:
