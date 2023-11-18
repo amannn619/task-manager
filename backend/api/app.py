@@ -87,24 +87,27 @@ def signup():
 
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
 
-    if not username or not password:
-        return jsonify({"message": "insufficient data"}), 406
+        if not username or not password:
+            return jsonify({"message": "insufficient data"}), 406
 
-    db = Database()
-    user = User.get_user_from_credentials(username, password)
-    if user:
-        session = user.create_session()
-        access_token = user.generate_access_token(secret_key)
-        response = jsonify(
-            {"user_id": user.user_id, "name": user.name, "username": user.username})
-        response.headers['x-refresh-token'] = session.token
-        response.headers['x-access-token'] = access_token
-        return response, 200
-    return jsonify({"message": "invalid credentials"}), 401
+        db = Database()
+        user = User.get_user_from_credentials(username, password)
+        if user:
+            session = user.create_session()
+            access_token = user.generate_access_token(secret_key)
+            response = jsonify(
+                {"user_id": user.user_id, "name": user.name, "username": user.username})
+            response.headers['x-refresh-token'] = session.token
+            response.headers['x-access-token'] = access_token
+            return response, 200
+        return jsonify({"message": "invalid credentials"}), 401
+    except Exception as e:
+        return jsonify({"message": f"{e}"}), 401
 
 
 @app.route("/generateAccessToken", methods=['GET'])
