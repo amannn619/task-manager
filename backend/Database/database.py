@@ -5,10 +5,10 @@ import json
 
 class Database:
     database = "taskmanager"
-    user = "aman"
-    password = "aman"
-    host = "192.168.0.112"
-    port = 3306
+    user = "3dSpv4eDRfHUy9q.root"
+    password = "B0SIGmUnMqnEQEKs"
+    host = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com"
+    port = 4000
 
     def __init__(self):
         self.database = Database.database
