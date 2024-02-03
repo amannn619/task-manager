@@ -9,8 +9,7 @@ from functools import wraps
 from Utils.custom_exceptions import NotFoundException, AuthenticationException
 
 app = Flask(__name__)
-CORS(app, origins="http://localhost:4200",
-     expose_headers=["x-access-token", "x-refresh-token"])
+CORS(app, expose_headers=["x-access-token", "x-refresh-token"])
 secret_key = "asdf"
 
 # middleware
