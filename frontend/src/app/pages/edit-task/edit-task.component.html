@@ -1,3 +1,17 @@
+<div *ngIf="loading" class="loading-overlay"></div>
+
+<div *ngIf="loading" class="loading-container">
+  <!-- Loading spinner or loading message -->
+  <div class="loading-icon"></div>
+  <!-- Loading message -->
+  <div class="loading-message">Loading...</div>
+</div>
+
+<div *ngIf="errorMessage" class="error-bubble">
+  <p>{{ errorMessage }}</p>
+  <button (click)="closeError()"><i class="fas fa-times-circle"></i></button>
+</div>
+
 <div class="centered-content">
   <div class="modal-box">
     <h1 class="title">Edit Task</h1>

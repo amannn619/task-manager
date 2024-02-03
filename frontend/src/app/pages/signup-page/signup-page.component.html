@@ -1,3 +1,15 @@
+<div *ngIf="loading" class="loading-overlay"></div>
+
+<div *ngIf="loading" class="loading-container">
+  <div class="loading-icon"></div>
+  <div class="loading-message">Signing up...</div>
+</div>
+
+<div *ngIf="errorMessage" class="error-bubble">
+  <p>{{ errorMessage }}</p>
+  <button (click)="closeError()"><i class="fas fa-times-circle"></i></button>
+</div>
+
 <div class="centered-content">
   <div class="signup-box">
     <h1 class="title has-text-primary">Sign up</h1>

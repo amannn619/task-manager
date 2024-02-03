@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
+import { catchError, finalize, of } from 'rxjs';
 import { TaskService } from 'src/app/task.service';
 
 @Component({
@@ -11,6 +12,8 @@ export class EditTaskComponent implements OnInit{
 
   selectedListId!: string;
   taskId!: string;
+  loading: boolean = false;
+  errorMessage: string = '';
   
   constructor(private route: ActivatedRoute, private taskService: TaskService, private router: Router
   ) { }
@@ -24,8 +27,24 @@ export class EditTaskComponent implements OnInit{
     )
   }
   updateTask(task: string) {
-    this.taskService.updateTask(this.taskId, task).subscribe((response) => {
-      this.router.navigate(['/lists', this.selectedListId])
+    this.taskService.updateTask(this.taskId, task)
+    .pipe(
+      catchError(error => {
+        this.errorMessage = error.error.description; 
+        return of(null); 
+      }),
+      finalize(() => {
+        this.loading = false; 
+      })
+      )
+      .subscribe((response) => {
+        if (response) {
+          this.router.navigate(['/lists', this.selectedListId])
+        }
     })
+  }
+
+  closeError() {
+    this.errorMessage = '';
   }
 }

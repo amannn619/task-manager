@@ -4,6 +4,7 @@ import { Component, OnInit } from '@angular/core';
 import { Task } from 'src/app/models/task.model';
 import { List } from 'src/app/models/list.model';
 import { AuthService } from 'src/app/auth.service';
+import { catchError, finalize, of } from 'rxjs';
 
 @Component({
   selector: 'app-task-view',
@@ -15,51 +16,68 @@ export class TaskViewComponent implements OnInit{
   lists: List[] = [];
   tasks: Task[] | undefined;
   selectedListId!: string;
+  loading: boolean = false;
+  errorMessage: string = '';
 
   constructor(private taskService: TaskService, private route: ActivatedRoute, private router: Router, private authService: AuthService) { }
   
   ngOnInit() {
-    
-    this.route.params.subscribe(
+    this.loading = true;  
+    this.errorMessage = ''
+    this.route.params
+    .subscribe(
       (params: Params) => {
         if (!isNaN(parseInt(params['listId']))){
           this.selectedListId = params['listId'];
-          this.taskService.getTasks(params['listId']).subscribe((response: any) => {
-          this.tasks = response;
-        })}
+          this.taskService.getTasks(params['listId'])
+            .subscribe((response: any) => {
+              this.tasks = response;
+            })}
         else {
           this.tasks = undefined
         }
       }
     )
     
-    this.taskService.getLists().subscribe((response: any) => {
+    this.taskService.getLists()
+    .pipe(
+      catchError(error => {
+        this.errorMessage = error.error.description; 
+        console.log(this.errorMessage)
+        return of(null); 
+      }),
+      finalize(() => {
+        this.loading = false; 
+
+      })
+      )
+      .subscribe((response: any) => {
       this.lists = response;
       
-      // console.log(this.lists);
     })
   }
 
   onTaskClick(task: Task) {
+    this.loading = true;
     if (task.completed) {
-      this.taskService.restartTask(task.task_id).subscribe((response: any) => {
+      this.taskService.restartTask(task.task_id)
+        .subscribe((response: any) => {
+        this.loading = false;
         task.completed = false;
-        // console.log(task)
       })
     }
     else {
       this.taskService.completeTask(task.task_id).subscribe((response: any) => {
         task.completed = true
-        // console.log(task)
+        this.loading = false;
       })
     }
-    
   }
 
   onDeleteListClick() {
     this.taskService.deleteList(this.selectedListId).subscribe((response: any) => {
       this.router.navigate(['/lists'])
-      console.log(response)
+      console.log("delete List")
     })
   }
   
@@ -67,11 +85,16 @@ export class TaskViewComponent implements OnInit{
     console.log(taskId)
     this.taskService.deleteTask(taskId).subscribe((response) => {
       console.log(response)
+      this.tasks = this.tasks?.filter(task => task.task_id !== taskId)
     })
   }
 
   logoutButtonClick() {
     this.authService.logout();
+  }
+
+  closeError() {
+    this.errorMessage = ''; 
   }
   
 } 
