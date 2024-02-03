@@ -6,9 +6,11 @@ from Utils.utils import Utils
 from Database.database import Database
 import jwt
 from functools import wraps
+from Utils.custom_exceptions import NotFoundException, AuthenticationException
 
 app = Flask(__name__)
-CORS(app, expose_headers=["x-access-token", "x-refresh-token"])
+CORS(app, origins="http://localhost:4200",
+     expose_headers=["x-access-token", "x-refresh-token"])
 secret_key = "asdf"
 
 # middleware
@@ -17,41 +19,57 @@ secret_key = "asdf"
 def authenticate(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        access_token = request.headers.get('x-access-token')
-
-        if not access_token:
-            return jsonify({"message": "Token is missing"}), 401
         try:
+            access_token = request.headers.get('x-access-token')
+
+            if not access_token:
+                raise AuthenticationException(description=f"Token is missing")
+
             decoded_token = jwt.decode(
                 access_token, secret_key, algorithms=["HS256"])
             user_id = decoded_token['user_id']
             return func(user_id, *args, **kwargs)
+
         except jwt.ExpiredSignatureError:
-            return jsonify({"message": "Token has expired"}), 401
+            raise AuthenticationException(description=f"Token has expired")
+
         except jwt.InvalidTokenError:
-            return jsonify({'message': "InvalidToken"}), 401
+            raise AuthenticationException(description=f"Invalid Token")
+
+        except AuthenticationException as e:
+            return jsonify(e.to_dict()), e.status_code
+
         except Exception as e:
-            return jsonify({'message': f"e"}), 401
+            return jsonify({'message': 'Server Error', 'error': str(e)}), 500
     return wrapper
 
 
 def verify_session(func):
     @wraps(func)
     def verify_session(*args, ** kwargs):
-        refresh_token = request.headers.get('x-refresh-token')
-        user_id = request.headers.get('user-id')
-        if not (refresh_token and user_id):
-            return jsonify({'error': 'User ID and Refresh Token are required in the header'}), 401
-        session = User.get_session_by_token(refresh_token)
-        if not session:
-            return jsonify({"message": "invalid token"})
-        user = User.get_user_by_id_and_token(user_id, refresh_token)
-        if not user:
-            return jsonify({'message': 'user_id and token mismatch'}), 401
+        try:
+            refresh_token = request.headers.get('x-refresh-token')
+            user_id = request.headers.get('user-id')
+            if not (refresh_token and user_id):
+                raise AuthenticationException(
+                    description=f"User ID and Refresh Token are required in the header")
+            session = User.get_session_by_token(refresh_token)
+            if not session:
+                raise AuthenticationException(description=f"Invalid Token")
+            user = User.get_user_by_id_and_token(user_id, refresh_token)
+            if not user:
+                raise AuthenticationException(
+                    description=f"user_id and token mismatch")
 
-        expired = User.has_refresh_token_expired(session['expires_at'])
-        if expired:
-            return jsonify({'message': 'session expired'}), 401
+            expired = User.has_refresh_token_expired(session['expires_at'])
+            if expired:
+                raise AuthenticationException(description=f"session expired")
+
+        except AuthenticationException as e:
+            return jsonify(e.to_dict()), e.status_code
+
+        except Exception as e:
+            return jsonify({'message': 'Server Error', 'error': str(e)}), 500
 
         return func(user, *args, **kwargs)
     return verify_session
@@ -64,25 +82,33 @@ def index():
 
 @app.route('/signup', methods=['POST'])
 def signup():
-    data = request.get_json()
-    name = data.get('name')
-    username = data.get('username')
-    password = data.get('password')
-    if not (name and username and password):
-        return jsonify("insufficient data"), 406
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        username = data.get('username')
+        password = data.get('password')
+        print(data)
+        if not (name and username and password):
+            raise NotFoundException(description=f"Insufficient Data")
 
-    user = User.create_user(name, username, password)
+        user = User.create_user(name, username, password)
 
-    if user == False:
-        return jsonify({"message": f"username is already taken.", "success": False}), 409
+        if user == False:
+            raise NotFoundException(description=f"Username is already taken")
 
-    session = user.create_session()
-    access_token = user.generate_access_token(secret_key)
-    response = jsonify(
-        {"user_id": user.user_id, "name": user.name, "username": user.username})
-    response.headers['x-refresh-token'] = session.token
-    response.headers['x-access-token'] = access_token
-    return response, 200
+        session = user.create_session()
+        access_token = user.generate_access_token(secret_key)
+        response = jsonify(
+            {"user_id": user.user_id, "name": user.name, "username": user.username})
+        response.headers['x-refresh-token'] = session.token
+        response.headers['x-access-token'] = access_token
+        return response, 200
+
+    except NotFoundException as e:
+        return jsonify(e.to_dict()), e.status_code
+
+    except Exception as e:
+        return jsonify({'message': 'Server Error', 'error': str(e)}), 500
 
 
 @app.route('/login', methods=['POST'])
@@ -93,7 +119,7 @@ def login():
         password = data.get('password')
 
         if not username or not password:
-            return jsonify({"message": "insufficient data"}), 406
+            raise NotFoundException(description=f"Insufficient Data")
 
         db = Database()
         user = User.get_user_from_credentials(username, password)
@@ -105,9 +131,13 @@ def login():
             response.headers['x-refresh-token'] = session.token
             response.headers['x-access-token'] = access_token
             return response, 200
-        return jsonify({"message": "invalid credentials"}), 401
+        raise NotFoundException(description=f"Invalid Credentials")
+
+    except NotFoundException as e:
+        return jsonify(e.to_dict()), e.status_code
+
     except Exception as e:
-        return jsonify({"message": f"{e}"}), 401
+        return jsonify({'message': 'Server Error', 'error': str(e)}), 500
 
 
 @app.route("/generateAccessToken", methods=['GET'])
@@ -122,11 +152,20 @@ def generateAccessToken(user):
 @app.route('/addList', methods=['POST'])
 @authenticate
 def addList(user_id):
-    data = request.get_json()
-    title = data.get("title")
-    db = Database()
-    list = db.add_list(user_id, title)
-    return jsonify(list), 200
+    try:
+        data = request.get_json()
+        title = data.get("title")
+        if not title or title == "":
+            raise NotFoundException(description=f"List Title is Empty")
+        db = Database()
+        list = db.add_list(user_id, title)
+        return jsonify(list), 200
+
+    except NotFoundException as e:
+        return jsonify(e.to_dict()), e.status_code
+
+    except Exception as e:
+        return jsonify({'message': 'Server Error', 'error': str(e)}), 500
 
 
 @app.route('/getList', methods=['POST'])
@@ -139,12 +178,21 @@ def getList(user_id):
 
 @app.route('/updateList', methods=['POST'])
 def updateList():
-    data = request.get_json()
-    list_id = data.get('list_id')
-    title = data.get("title")
-    db = Database()
-    message = db.update_list(list_id, title)
-    return jsonify({'message': message}), 200
+    try:
+        data = request.get_json()
+        list_id = data.get('list_id')
+        title = data.get("title")
+        if not title or title == "":
+            raise NotFoundException(description=f"List Title is Empty")
+        db = Database()
+        message = db.update_list(list_id, title)
+        return jsonify({'message': message}), 200
+
+    except NotFoundException as e:
+        return jsonify(e.to_dict()), e.status_code
+
+    except Exception as e:
+        return jsonify({'message': 'Server Error', 'error': str(e)}), 500
 
 
 @app.route('/deleteList', methods=['POST'])
@@ -169,22 +217,40 @@ def getTasks(user_id):
 @app.route('/addTask', methods=['POST'])
 @authenticate
 def addTask(user_id):
-    data = request.get_json()
-    list_id = data.get('list_id')
-    task_name = data.get('task')
-    db = Database()
-    task = db.add_task(list_id, task_name)
-    return jsonify(task), 200
+    try:
+        data = request.get_json()
+        list_id = data.get('list_id')
+        task_name = data.get('task')
+        if not task_name or task_name == "":
+            raise NotFoundException(description=f"Task Name is Empty")
+        db = Database()
+        task = db.add_task(list_id, task_name)
+        return jsonify(task), 200
+
+    except NotFoundException as e:
+        return jsonify(e.to_dict()), e.status_code
+
+    except Exception as e:
+        return jsonify({'message': 'Server Error', 'error': str(e)}), 500
 
 
 @app.route('/updateTask', methods=['POST'])
 def updateTask():
-    data = request.get_json()
-    task_id = data.get('task_id')
-    task = data.get('task')
-    db = Database()
-    message = db.update_task(task_id, task)
-    return jsonify(message), 200
+    try:
+        data = request.get_json()
+        task_id = data.get('task_id')
+        task = data.get('task')
+        if not task or task == "":
+            raise NotFoundException(description=f"Task Name is Empty")
+        db = Database()
+        message = db.update_task(task_id, task)
+        return jsonify(message), 200
+
+    except NotFoundException as e:
+        return jsonify(e.to_dict()), e.status_code
+
+    except Exception as e:
+        return jsonify({'message': 'Server Error', 'error': str(e)}), 500
 
 
 @app.route('/completeTask', methods=['POST'])
